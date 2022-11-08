@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blogging App Local Storage</title>
+  <style>
+    body {
+      padding:0;
+      margin:1rem;
+    }
+    form, article {
+      padding:2rem;
+      background-color:lightgray;
+      border:1px solid gray;
+      border-radius: 1rem;
+    }
+    #blogList {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap:1rem;
+    }
+    #blogList {
+      margin-top:2rem;
+    }
+    #counts {
+      background-color: yellow;
+      display: inline;
+      padding:0.5rem;
+      border-radius: 0.5rem;
+      border:1px solid gray;
+    }
+  </style>
+</head>
+<body>
+  <form>
+    <p id="counts"></p>
+    <h1 id="blogHeader">Enter Blog</h1>
+    <label>Blog Title:</label>
+    <input id="blogTitle" type="text" placeholder="Enter your title..."><br>
+
+    <label>Blog Author:</label>
+    <input id="blogAuthor" type="text" placeholder="Enter your author..."><br>
+
+    <label>Blog Subject:</label>
+    <input id="blogSubject" type="text" placeholder="Enter your subject..."><br>
+
+    <h3>Blog Content</h3>
+    <textarea id="blogContent" rows="5" cols="40" placeholder="enter blog content"></textarea><br>
+    <button onclick="blogApp.saveBlogPosts()">save blog</button>
+  </form>
+  <div id="blogList"></div>
+
+<script>
+// CRUD operations: create reading update delete
+// Blog object as one object which has everything else inside it
+let blogApp = {
+  countsEntity: "#counts", // the counts entity
+  blogTitleId: "#blogTitle", // html entity linking for title
+  blogHeader: "#blogHeader", // html entity linking for header
+  blogContentId: "#blogContent", // html entity linking for content
+  blogListId: "#blogList", // html entity linking for list
+  blogSubjectId: "#blogSubject", // html entity linking for subject
+  blogAuthorId: "#blogAuthor", // html entity linking for author
+  localStorageName: "blogs-localstorage", // Local storage name
+  isEditMode: false, // Edit mode switch handler
+  editingIndex: -1, // Initial setting at -1 because it is not in edit mode
+  query(incoming) {
+    // Helper function
+    return document.querySelector(incoming);
+  },
+  generatePost(incomingTitle, incomingAuthor, incomingContent, incomingSubject){
+    // Post generation function which returns the object notation of the post from incoming data pulled via the html entities
+    return {
+      title: incomingTitle,
+      author: incomingAuthor,
+      content: incomingContent,
+      subject: incomingSubject
+    };
+  },
+  pullFromLocalStorage() {
+    // Returns the parsed data from localstorage, the "read" operation.
+    return JSON.parse(localStorage.getItem(this.localStorageName));
+  },
+  saveToLocalStorage(incomingBlogData) {
+    //Save posts to localstorage, receives parameter of incomingBlogData
+    localStorage.setItem(this.localStorageName , JSON.stringify(incomingBlogData))
+  },
+  buildRenderBlogPosts() {
+    // Rendering functionality to build the posts and render the page
+    // Get and parse the array of objects from sessionStorage
+    let blogData = this.pullFromLocalStorage();
+
+    // A builder helper to create the html elements
+    if (blogData != null) {
+      let builder = '';
+
+      for (let i = 0; i < blogData.length; i++) {
+        builder += '<article>';
+          builder += '<h1>Title: '+blogData[i].title+'</h1>';
+          builder += '<p>Author: '+blogData[i].author+'</p>';
+          builder += '<p>Content: '+blogData[i].content+'</p>';
+          builder += '<p>Subject: '+blogData[i].subject+'</p>';
+          builder += '<button onclick="blogApp.editThisPost('+i+')">Edit</button>';
+          builder += '<button onclick="blogApp.deleteThisPost('+i+')">Delete</button>';
+
+        builder += '</article>';
+      }
+
+      // Insert into the blog list with the builder helper
+      this.query(this.blogListId).innerHTML = builder;
+      this.query(this.countsEntity).innerHTML = blogData.length + " posts in the library";
+    }
+  },
+  deleteThisPost(incomingIndex) {
+    // Delete the post by receiving the index of the item from the localstorage via the button rendered on the page
+    console.log(incomingIndex);
+    let thisData = this.pullFromLocalStorage();
+    thisData.splice(incomingIndex, 1);
+    this.saveToLocalStorage(thisData);
+    this.buildRenderBlogPosts();
+  },
+  editThisPost(incomingIndex) {
+    // Edit the post by receiving the index of the item from the localstorage via the button rendered on the page
+    console.log(incomingIndex);
+    let thisData = this.pullFromLocalStorage();
+    this.query(this.blogHeader).innerHTML = "Editing the post titled: " + thisData[incomingIndex].title;
+    this.query(this.blogAuthorId).value = thisData[incomingIndex].author;
+    this.query(this.blogTitleId).value = thisData[incomingIndex].title;
+    this.query(this.blogSubjectId).value = thisData[incomingIndex].subject;
+    this.query(this.blogContentId).value = thisData[incomingIndex].content;
+    this.isEditMode = true;
+    this.editingIndex = incomingIndex;
+  },
+  saveBlogPosts() {
+    //The "Create" functionality which also handles updating for editing with the isEditMode switch
+    let blogTitle = (this.query(this.blogTitleId)).value; // creating a varaiable to represent the HTML element that already exists
+    let blogContent = (this.query(this.blogContentId)).value; // creating a varirable to represent the HTML element
+    let blogSubject = (this.query(this.blogSubjectId)).value; // get the subject
+    let blogAuthor = (this.query(this.blogAuthorId)).value; // get the subject
+    let blogData = this.pullFromLocalStorage();
+
+    if (blogData != null){
+      if (this.isEditMode) {
+        // Handling edit mode
+        let newOverwrittenPost = this.generatePost(blogTitle, blogAuthor, blogContent, blogSubject);
+        blogData[this.editingIndex] = newOverwrittenPost;
+        this.saveToLocalStorage(blogData);
+        this.isEditMode = false;
+      } else {
+        // Then the blog data already exists
+        console.log("DATA" + blogData);
+        let newPost = this.generatePost(blogTitle, blogAuthor, blogContent, blogSubject);
+        blogData.push(newPost);
+        this.saveToLocalStorage(blogData);
+      }
+    } else {
+      // Then it needs to create the first blog item to save
+      let newFirstPostToSave = this.generatePost(blogTitle, blogAuthor, blogContent, blogSubject);
+      let newBlogDataToSave = [newFirstPostToSave];
+      this.saveToLocalStorage(newBlogDataToSave);
+    }
+
+    this.buildRenderBlogPosts();
+  }
+};
+
+// Initially render the posts on the page by calling the render function
+blogApp.buildRenderBlogPosts();
+
+</script>
+</body>
+</html>
